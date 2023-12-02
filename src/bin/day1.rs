@@ -21,7 +21,7 @@ fn part1(input: &str) -> u32 {
     input
         .lines()
         .filter_map(|line: &str| {
-            let first = line.chars().find(char::is_ascii_digit)?;
+            let first: char = line.chars().find(char::is_ascii_digit)?;
             let last: char = line.chars().rev().find(char::is_ascii_digit)?;
             format!("{first}{last}").parse::<u32>().ok()
         })
