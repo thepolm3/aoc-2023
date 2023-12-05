@@ -2,15 +2,11 @@ use anyhow::Context;
 use nom::{
     bytes::complete::tag,
     character::complete::{alpha1, line_ending, multispace0},
-    combinator::{map, map_res},
+    combinator::map,
     multi::{count, separated_list1},
     sequence::{pair, preceded, separated_pair, terminated, tuple},
     IResult,
 };
-
-fn digit1(input: &str) -> IResult<&str, u64> {
-    map_res(nom::character::complete::digit1, str::parse)(input)
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct RangeMap {
@@ -95,7 +91,10 @@ impl RangeMap {
 }
 
 fn seeds(input: &str) -> IResult<&str, Vec<u64>> {
-    preceded(tag("seeds: "), separated_list1(tag(" "), digit1))(input)
+    preceded(
+        tag("seeds: "),
+        separated_list1(tag(" "), nom::character::complete::u64),
+    )(input)
 }
 
 fn title_line(input: &str) -> IResult<&str, (&str, &str)> {
@@ -103,8 +102,9 @@ fn title_line(input: &str) -> IResult<&str, (&str, &str)> {
 }
 
 fn range_map(input: &str) -> IResult<&str, RangeMap> {
+    use nom::character::complete::u64;
     map(
-        tuple((digit1, multispace0, digit1, multispace0, digit1)),
+        tuple((u64, multispace0, u64, multispace0, u64)),
         |(to, _, from, _, length)| RangeMap { from, to, length },
     )(input)
 }
