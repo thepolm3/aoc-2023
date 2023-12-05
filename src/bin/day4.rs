@@ -23,7 +23,6 @@ fn main() -> Result<()> {
         let copies = winning_nos
             .iter()
             .rev()
-            .take(25)
             .enumerate()
             .filter_map(|(j, &(no_winning, copies))| (no_winning > j).then_some(copies))
             .sum::<usize>()
