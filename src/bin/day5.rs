@@ -22,9 +22,9 @@ struct UnmappedRegion((u64, u64));
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum Intersection {
-    None([UnmappedRegion; 1]),
+    None(UnmappedRegion),
     WholeRegion(MappedRegion),
-    End([UnmappedRegion; 1], MappedRegion),
+    End(UnmappedRegion, MappedRegion),
     Middle([UnmappedRegion; 2], MappedRegion),
 }
 
@@ -37,14 +37,32 @@ impl Intersection {
             Intersection::Middle(_, MappedRegion(t)) => Some(*t),
         }
     }
-    fn get_unmapped(&self) -> impl Iterator<Item = (u64, u64)> + '_ {
-        match self {
-            Intersection::WholeRegion(_) => [].iter(),
-            Intersection::None(unmapped) => unmapped.iter(),
-            Intersection::End(unmapped, _) => unmapped.iter(),
-            Intersection::Middle(unmapped, _) => unmapped.iter(),
+
+    fn into_unmapped(self) -> impl Iterator<Item = (u64, u64)> {
+        IntersectionUnmappedRegionIterator {
+            inner: self,
+            index: 0,
         }
         .map(|x| x.0)
+    }
+}
+
+struct IntersectionUnmappedRegionIterator {
+    inner: Intersection,
+    index: usize,
+}
+
+impl Iterator for IntersectionUnmappedRegionIterator {
+    type Item = UnmappedRegion;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.index += 1;
+        match (self.index, &self.inner) {
+            (1, Intersection::None(x)) => Some(*x),
+            (1, Intersection::End(x, _)) => Some(*x),
+            (1..=2, Intersection::Middle(x, _)) => Some(x[self.index - 1]),
+            _ => None,
+        }
     }
 }
 
@@ -56,7 +74,7 @@ impl RangeMap {
 
     fn intersection(&self, (a, len): (u64, u64)) -> Intersection {
         if a + len <= self.from || a >= self.from + self.length {
-            return Intersection::None([UnmappedRegion((a, len))]);
+            return Intersection::None(UnmappedRegion((a, len)));
         }
 
         if a >= self.from && a + len <= self.from + self.length {
@@ -75,16 +93,13 @@ impl RangeMap {
 
         if a <= self.from {
             return Intersection::End(
-                [UnmappedRegion((a, self.from - a))],
+                UnmappedRegion((a, self.from - a)),
                 MappedRegion((self.to, len - (self.from - a))),
             );
         }
 
         Intersection::End(
-            [UnmappedRegion((
-                self.from + self.length,
-                a + len - (self.from + self.length),
-            ))],
+            UnmappedRegion((self.from + self.length, a + len - (self.from + self.length))),
             MappedRegion((self.to + (a - self.from), self.from + self.length - a)),
         )
     }
@@ -117,16 +132,16 @@ fn range_maps(input: &str) -> IResult<&str, Vec<RangeMap>> {
 }
 
 fn parse(input: &str) -> IResult<&str, (Vec<u64>, Vec<Vec<RangeMap>>)> {
-    let (input, seeds) = seeds(input)?;
-    let (input, _) = count(line_ending, 2)(input)?;
-    let (input, maps) = separated_list1(count(line_ending, 2), range_maps)(input)?;
-    Ok((input, (seeds, maps)))
+    separated_pair(
+        seeds,
+        count(line_ending, 2),
+        separated_list1(count(line_ending, 2), range_maps),
+    )(input)
 }
 
 fn main() -> anyhow::Result<()> {
-    //fails with unclear lifetime error without leaking -- apparently parsing `input` requires that it be 'static
-    let input: &'static str = std::fs::read_to_string("inputs/day5.txt")?.leak();
-    let (_, (seeds, map_sequence)) = parse(input)?;
+    let input = std::fs::read_to_string("inputs/day5.txt")?;
+    let (_, (seeds, map_sequence)) = parse(&input).expect("invalid input");
 
     let part1 = seeds
         .iter()
@@ -155,8 +170,9 @@ fn main() -> anyhow::Result<()> {
             let mut new_values = Vec::new();
             for range in values {
                 let intersection = range_map.intersection(range);
+
                 mapped_values.extend(intersection.get_mapped());
-                new_values.extend(intersection.get_unmapped());
+                new_values.extend(intersection.into_unmapped());
             }
             values = new_values;
         }
@@ -187,17 +203,17 @@ mod test {
 
         assert_eq!(
             map.intersection((3, 2)),
-            Intersection::None([UnmappedRegion((3, 2))])
+            Intersection::None(UnmappedRegion((3, 2)))
         );
 
         assert_eq!(
             map.intersection((3, 3)),
-            Intersection::End([UnmappedRegion((3, 2))], MappedRegion((105, 1)))
+            Intersection::End(UnmappedRegion((3, 2)), MappedRegion((105, 1)))
         );
 
         assert_eq!(
             map.intersection((3, 4)),
-            Intersection::End([UnmappedRegion((3, 2))], MappedRegion((105, 2)))
+            Intersection::End(UnmappedRegion((3, 2)), MappedRegion((105, 2)))
         );
 
         assert_eq!(
@@ -207,7 +223,7 @@ mod test {
 
         assert_eq!(
             map.intersection((8, 15)),
-            Intersection::End([UnmappedRegion((10, 13))], MappedRegion((108, 2)))
+            Intersection::End(UnmappedRegion((10, 13)), MappedRegion((108, 2)))
         );
 
         assert_eq!(
