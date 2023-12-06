@@ -155,8 +155,9 @@ fn main() -> anyhow::Result<()> {
         })
         .min()
         .context("empty list")?;
-
-    let mut values = seeds
+        
+    //this will start off being the seeds, and at each step
+    let mut ranges = seeds
         .chunks_exact(2)
         .map(|chunk| match chunk {
             [a, b] => (*a, *b),
@@ -168,21 +169,21 @@ fn main() -> anyhow::Result<()> {
         let mut mapped_values = Vec::new();
         for range_map in map_step {
             let mut new_values = Vec::new();
-            for range in values {
+            for range in ranges {
                 let intersection = range_map.intersection(range);
 
                 mapped_values.extend(intersection.get_mapped());
                 new_values.extend(intersection.into_unmapped());
             }
-            values = new_values;
+            ranges = new_values;
         }
-        values.extend(mapped_values.into_iter());
+        ranges.extend(mapped_values.into_iter());
     }
 
     println!("5.1: {part1:?}");
     println!(
         "5.2: {}",
-        values.into_iter().min().context("empty values")?.0
+        ranges.into_iter().min().context("empty values")?.0
     );
 
     Ok(())
