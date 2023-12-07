@@ -21,7 +21,6 @@ fn main() -> anyhow::Result<()> {
             line.split_whitespace()
                 .skip(1)
                 .map(|x| x.parse::<u64>().expect("Lines consist of integers"))
-                .collect_vec()
         })
         .collect_tuple()
         .context("not enough lines")?;
@@ -41,7 +40,7 @@ fn main() -> anyhow::Result<()> {
                 .skip(1)
                 .collect::<String>()
                 .parse::<u64>()
-                .expect("line is a valid integer when whitespace is stripped")
+                .expect("line is a valid integer when whitespace is removed")
         })
         .collect_tuple()
         .expect("Exactly two lines");
