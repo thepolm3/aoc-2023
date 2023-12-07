@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{cmp::Reverse, marker::PhantomData};
 
 use itertools::Itertools;
 
@@ -82,7 +82,6 @@ impl From<Card<StandardDeck>> for Card<JokerDeck> {
     }
 }
 
-//Hand contains a hand of cards, in descending order of value
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Hand<T>([Card<T>; 5]);
 
@@ -144,10 +143,9 @@ impl Hand<StandardDeck> {
 
 impl Hand<JokerDeck> {
     fn rank(&self) -> HandRank {
-        // number of groups of size 2, 3, 4, 5
         let mut jokers = 0;
-        // number of groups of size 2, 3, 4, 5
-        let mut groups = Vec::new();
+
+        let mut groups = Vec::with_capacity(5);
         for (key, group) in &self.0.iter().sorted().group_by(|x| *x) {
             let size = group.count();
             if key.inner == 'J' {
@@ -157,8 +155,8 @@ impl Hand<JokerDeck> {
             }
         }
 
-        //sort groups high to low by size, then card value
-        groups.sort_unstable_by(|a, b| b.cmp(a));
+        //sort groups high to low by group size, then card value
+        groups.sort_unstable_by_key(|x| Reverse(*x));
 
         //may fail if there are 5 jokers
         if let Some(t) = groups.get_mut(0) {
