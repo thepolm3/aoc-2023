@@ -146,7 +146,7 @@ impl Hand<JokerDeck> {
         let mut jokers = 0;
 
         let mut groups = Vec::with_capacity(5);
-        for (key, group) in &self.0.iter().sorted().group_by(|x| *x) {
+        for (key, group) in &self.0.iter().sorted().group_by(|&x| x) {
             let size = group.count();
             if key.inner == 'J' {
                 jokers += size;
@@ -155,7 +155,7 @@ impl Hand<JokerDeck> {
             }
         }
 
-        //sort groups high to low by group size, then card value
+        //sort group sizes high to low
         groups.sort_unstable_by_key(|x| Reverse(*x));
 
         //may fail if there are 5 jokers
