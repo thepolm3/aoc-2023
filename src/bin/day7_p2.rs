@@ -1,7 +1,7 @@
 use itertools::Itertools;
 
 const CARDS: [char; 13] = [
-    '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A',
+    'J', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A',
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -87,8 +87,12 @@ impl Hand {
 
     fn rank(&self) -> HandRank {
         // number of groups of size 2, 3, 4, 5
+        let jokers = self.0.iter().filter(|&x| x == &Card('J')).count();
         let mut groups = [0; 4];
-        for (_, group) in &self.0.iter().sorted().group_by(|x| *x) {
+        for (key, group) in &self.0.iter().sorted().group_by(|x| *x) {
+            if key == &Card('J') {
+                continue;
+            }
             let size = group.count();
             if size > 1 {
                 groups[size - 2] += 1;
