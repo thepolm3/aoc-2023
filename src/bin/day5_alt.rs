@@ -12,8 +12,8 @@ use nom::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct RangeMap {
-    from: u64,
-    to: u64,
+    source_start: u64,
+    dest_start: u64,
     length: u64,
 }
 
@@ -32,7 +32,11 @@ fn range_map(input: &str) -> IResult<&str, RangeMap> {
     use nom::character::complete::u64;
     map(
         tuple((u64, multispace0, u64, multispace0, u64)),
-        |(to, _, from, _, length)| RangeMap { from, to, length },
+        |(to, _, from, _, length)| RangeMap {
+            source_start: from,
+            dest_start: to,
+            length,
+        },
     )(input)
 }
 
@@ -57,38 +61,41 @@ fn main() -> anyhow::Result<()> {
     let mut ranges: VecDeque<_> = seeds
         .chunks_exact(2)
         .map(|chunk| match chunk {
-            [a, b] => [*a, *b],
+            &[a, len] => a..(a + len),
             _ => panic!("Invalid seeds given"),
         })
         .collect();
     let mut mapped = VecDeque::new();
 
     for maps in map_sequence {
-        while let Some([start, length]) = ranges.pop_front() {
-            let end = start + length;
+        while let Some(range) = ranges.pop_front() {
+            let (start, end) = (range.start, range.end);
             for map in maps.clone() {
-                let map_end = map.from + map.length;
+                let map_end = map.source_start + map.length;
 
                 //range:   [  ]
                 //map:   [      ]
-                if map.from <= start && end <= map_end {
-                    mapped.push_back([map.to + start - map.from, length]);
+                if map.source_start <= start && end <= map_end {
+                    mapped.push_back(
+                        (map.dest_start + start - map.source_start)
+                            ..(map.dest_start + end - map.source_start),
+                    );
                     break;
                 }
 
                 //range:   [     ]     AND [            ]
                 //map:        [      ]         [    ]
-                if start < map.from && end > map.from {
-                    ranges.push_back([start, map.from - start]);
-                    ranges.push_back([map.from, end - map.from]);
+                if start < map.source_start && end > map.source_start {
+                    ranges.push_back(start..map.source_start);
+                    ranges.push_back(map.source_start..end);
                     break;
                 }
 
                 //range:   [         ]
                 //map:   [      ]
                 if start < map_end && end > map_end {
-                    ranges.push_back([start, map_end - start]);
-                    ranges.push_back([map_end, end - map_end]);
+                    ranges.push_back(start..map_end);
+                    ranges.push_back(map_end..end);
                     break;
                 }
 
@@ -101,7 +108,11 @@ fn main() -> anyhow::Result<()> {
     }
     println!(
         "5.2: {}",
-        ranges.into_iter().min().context("empty values")?[0]
+        ranges
+            .into_iter()
+            .map(|x| x.start)
+            .min()
+            .context("empty values")?
     );
     Ok(())
 }
