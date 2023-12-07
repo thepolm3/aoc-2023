@@ -159,16 +159,12 @@ impl Hand<JokerDeck> {
         groups.sort_unstable_by_key(|x| Reverse(*x));
 
         //may fail if there are 5 jokers
-        if let Some(t) = groups.get_mut(0) {
+        if let Some(t) = groups.first_mut() {
             *t += jokers
-        } else {
-            debug_assert_eq!(jokers, 5);
-            groups = vec![5];
         }
 
-        let mut groups = groups.into_iter();
-        match [groups.next(), groups.next()] {
-            [Some(5), None] => HandRank::FiveOfAKind,
+        match [groups.first(), groups.get(1)] {
+            [Some(5), None] | [None, None] => HandRank::FiveOfAKind,
             [Some(4), _] => HandRank::FourOfAKind,
             [Some(3), Some(2)] => HandRank::FullHouse,
             [Some(3), _] => HandRank::ThreeOfAKind,
