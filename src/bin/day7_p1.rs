@@ -7,17 +7,17 @@ const CARDS: [char; 13] = [
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum HandRank {
     HighCard,
-    Pair(Card),
+    Pair,
 
     //higher first
-    TwoPair(Card, Card),
-    ThreeOfAKind(Card),
+    TwoPair,
+    ThreeOfAKind,
 
     //group of 3 first
-    FullHouse(Card, Card),
+    FullHouse,
 
-    FiveOfAKind(Card),
-    FourOfAKind(Card),
+    FourOfAKind,
+    FiveOfAKind,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Card(char);
@@ -59,10 +59,18 @@ impl Ord for Hand {
         (self.rank(), self.0).cmp(&(other.rank(), other.0))
     }
 }
+
+impl std::fmt::Display for Hand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for card in self.0 {
+            write!(f, "{}", card.0)?;
+        }
+        Ok(())
+    }
+}
+
 impl Hand {
-    fn new(mut cards: [Card; 5]) -> Self {
-        //sort in reverse
-        cards.sort_unstable_by(|a, b| b.cmp(a));
+    fn new(cards: [Card; 5]) -> Self {
         Self(cards)
     }
     fn from_str(s: &str) -> Option<Self> {
@@ -77,31 +85,35 @@ impl Hand {
         Some(Self::new(t.try_into().ok()?))
     }
 
-    //note this implementation relies of Hand being sorted
     fn rank(&self) -> HandRank {
         // number of groups of size 2, 3, 4, 5
-        let mut groups = Vec::new();
-        for (key, group) in &self.0.iter().group_by(|x| *x) {
-            groups.push((group.count(), *key));
+        let mut groups = [0; 4];
+        for (_, group) in &self.0.iter().sorted().group_by(|x| *x) {
+            let size = group.count();
+            if size > 1 {
+                groups[size - 2] += 1;
+            }
         }
 
-        //sort groups high to low by size, then card value
-        groups.sort_unstable_by(|a, b| b.cmp(a));
-
-        let mut groups = groups.into_iter();
-        match [groups.next(), groups.next()] {
-            [Some((5, c)), None] => HandRank::FiveOfAKind(c),
-            [Some((4, c)), _] => HandRank::FourOfAKind(c),
-            [Some((3, c1)), Some((2, c2))] => HandRank::FullHouse(c1, c2),
-            [Some((3, c)), _] => HandRank::ThreeOfAKind(c),
-            [Some((2, c1)), Some((2, c2))] => HandRank::TwoPair(c1, c2),
-            [Some((2, c)), _] => HandRank::Pair(c),
+        match groups {
+            [0, 0, 0, 1] => HandRank::FiveOfAKind,
+            [0, 0, 1, 0] => HandRank::FourOfAKind,
+            [1, 1, 0, 0] => HandRank::FullHouse,
+            [0, 1, 0, 0] => HandRank::ThreeOfAKind,
+            [2, 0, 0, 0] => HandRank::TwoPair,
+            [1, 0, 0, 0] => HandRank::Pair,
             _ => HandRank::HighCard,
         }
     }
 }
 fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("inputs/day7.txt")?;
+
+    //     let input = "32T3K 765
+    // T55J5 684
+    // KK677 28
+    // KTJJT 220
+    // QQQJA 483";
 
     let mut hands = input
         .lines()
@@ -115,6 +127,15 @@ fn main() -> anyhow::Result<()> {
         .collect_vec();
 
     hands.sort();
+
+    // println!(
+    //     "{}",
+    //     hands
+    //         .iter()
+    //         .copied()
+    //         .map(|x| format!("{} {:?}", x.0, x.0.rank()))
+    //         .join("\n")
+    // );
 
     let part1 = hands
         .iter()
@@ -135,9 +156,27 @@ mod test {
     fn test_hand_cmp() {
         let hand1 = Hand::from_str("32T3K").unwrap();
         let hand2 = Hand::from_str("KK677").unwrap();
-        assert_eq!(hand1.rank(), HandRank::Pair(Card('3')));
-        assert_eq!(hand2.rank(), HandRank::TwoPair(Card('K'), Card('7')));
+        assert_eq!(hand1.rank(), HandRank::Pair);
+        assert_eq!(hand2.rank(), HandRank::TwoPair);
         assert_eq!(hand1.rank().cmp(&hand2.rank()), std::cmp::Ordering::Less);
         assert_eq!(hand1.cmp(&hand2), std::cmp::Ordering::Less);
+
+        let hand3 = Hand::from_str("33332").unwrap();
+        let hand4 = Hand::from_str("2AAAA").unwrap();
+        assert_eq!(hand3.cmp(&hand4), std::cmp::Ordering::Greater);
+
+        assert_eq!(
+            Hand::from_str("77888")
+                .unwrap()
+                .cmp(&Hand::from_str("77788").unwrap()),
+            std::cmp::Ordering::Greater
+        );
+
+        assert_eq!(
+            Hand::from_str("77888")
+                .unwrap()
+                .cmp(&Hand::from_str("77788").unwrap()),
+            std::cmp::Ordering::Greater
+        );
     }
 }
