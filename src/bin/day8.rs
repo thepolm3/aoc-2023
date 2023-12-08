@@ -42,9 +42,9 @@ fn find_repeat_and_z_visits(
 }
 
 //gcd, u, v
-fn bezoit(m: BigInt, n: BigInt) -> (BigInt, BigInt, BigInt) {
+fn bézout(m: BigInt, n: BigInt) -> (BigInt, BigInt, BigInt) {
     if n > m {
-        let (g, v, u) = bezoit(n, m);
+        let (g, v, u) = bézout(n, m);
         return (g, u, v);
     }
     let (q, r) = m.div_rem(&n);
@@ -60,7 +60,7 @@ fn bezoit(m: BigInt, n: BigInt) -> (BigInt, BigInt, BigInt) {
     // g = n*u + r*v
     // m = n*q + r
     // m * v - g = n*q*v - n*u
-    let (g, u, v) = bezoit(n, r);
+    let (g, u, v) = bézout(n, r);
     (g, v.clone(), u - q * v)
 }
 fn main() -> anyhow::Result<()> {
@@ -104,7 +104,7 @@ fn main() -> anyhow::Result<()> {
 
     let (n, solutions) = repeats
         .reduce(|(n, xs), (m, ys)| {
-            let (g, u, v) = bezoit(n.clone(), m.clone());
+            let (g, u, v) = bézout(n.clone(), m.clone());
             let lcm = n.clone() * m.clone() / g.clone();
             (
                 lcm.clone(),
