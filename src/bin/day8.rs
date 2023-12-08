@@ -89,14 +89,9 @@ fn main() -> anyhow::Result<()> {
 
     println!("8.1 {part1}");
 
-    let mut current: Vec<_> = map
-        .keys()
-        .filter(|k: &&&str| k.ends_with('A'))
-        .copied()
-        .collect();
-    current.sort();
+    let current = map.keys().filter(|k: &&&str| k.ends_with('A'));
 
-    let repeats = current.into_iter().map(|x| {
+    let repeats = current.map(|x| {
         let (start, repeat, goals) = find_repeat_and_z_visits(x, instructions, &map);
         (
             BigInt::from(repeat - start),
@@ -106,6 +101,7 @@ fn main() -> anyhow::Result<()> {
                 .collect::<Vec<_>>(),
         )
     });
+
     let (n, solutions) = repeats
         .reduce(|(n, xs), (m, ys)| {
             let (g, u, v) = bezoit(n.clone(), m.clone());
