@@ -184,29 +184,21 @@ fn main() -> anyhow::Result<()> {
     println!("10.1: {}", (l.len()) / 2);
 
     let mut inside = 0;
-    let mut inside_line = false;
-    let mut last_corner = None;
 
     for y in 0..grid.height {
+        let mut north = 0;
+        let mut south = 0;
         for x in 0..grid.width {
             if l.contains(&(x, y)) {
                 if let Some(p) = grid.get((x, y)) {
-                    if p == Pipe::NS
-                        || (p == Pipe::NW && last_corner == Some(South))
-                        || (p == Pipe::SW && last_corner == Some(North))
-                    {
-                        inside_line = !inside_line;
+                    if p == Pipe::NE || p == Pipe::NS || p == Pipe::NW {
+                        north += 1;
                     }
-
-                    match p {
-                        Pipe::NE => last_corner = Some(North),
-                        Pipe::NW => last_corner = None,
-                        Pipe::ES => last_corner = Some(South),
-                        Pipe::SW => last_corner = None,
-                        _ => {}
+                    if p == Pipe::ES || p == Pipe::NS || p == Pipe::SW {
+                        south += 1;
                     }
                 }
-            } else if inside_line {
+            } else if north % 2 == 1 && south % 2 == 1 {
                 inside += 1;
             }
         }
