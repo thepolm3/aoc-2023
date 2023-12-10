@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use itertools::Itertools;
 
@@ -174,8 +176,11 @@ fn main() -> anyhow::Result<()> {
     let grid = Grid::from_str(&input).context("Invalid grid")?;
 
     let traveller = Traveller::new(&grid);
-    let mut l = vec![traveller.position];
+    let mut l = HashSet::new();
+
+    l.insert(traveller.position);
     l.extend(traveller);
+
     println!("10.1: {}", (l.len()) / 2);
 
     let mut inside = 0;
