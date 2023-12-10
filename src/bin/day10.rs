@@ -1,7 +1,5 @@
-use std::mem::size_of;
-
 use anyhow::Context;
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Direction {
@@ -171,11 +169,45 @@ impl<'a> Iterator for Traveller<'a> {
 }
 
 fn main() -> anyhow::Result<()> {
+    use Direction::*;
     let input = std::fs::read_to_string("inputs/day10.txt")?;
     let grid = Grid::from_str(&input).context("Invalid grid")?;
 
     let traveller = Traveller::new(&grid);
-    println!("10.1: {}", (traveller.count() + 1) / 2);
+    let mut l = vec![traveller.position];
+    l.extend(traveller);
+    println!("10.1: {}", (l.len()) / 2);
+
+    let mut inside = 0;
+    let mut inside_line = false;
+    let mut last_corner = None;
+
+    for y in 0..grid.height {
+        for x in 0..grid.width {
+            if l.contains(&(x, y)) {
+                if let Some(p) = grid.get((x, y)) {
+                    if p == Pipe::NS
+                        || (p == Pipe::NW && last_corner == Some(South))
+                        || (p == Pipe::SW && last_corner == Some(North))
+                    {
+                        inside_line = !inside_line;
+                    }
+
+                    match p {
+                        Pipe::NE => last_corner = Some(North),
+                        Pipe::NW => last_corner = None,
+                        Pipe::ES => last_corner = Some(South),
+                        Pipe::SW => last_corner = None,
+                        _ => {}
+                    }
+                }
+            } else if inside_line {
+                inside += 1;
+            }
+        }
+    }
+
+    println!("10.2: {}", inside);
 
     Ok(())
 }
