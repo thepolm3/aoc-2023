@@ -171,7 +171,6 @@ impl<'a> Iterator for Traveller<'a> {
 }
 
 fn main() -> anyhow::Result<()> {
-    use Direction::*;
     let input = std::fs::read_to_string("inputs/day10.txt")?;
     let grid = Grid::from_str(&input).context("Invalid grid")?;
 
