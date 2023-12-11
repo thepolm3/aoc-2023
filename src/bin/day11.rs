@@ -1,23 +1,6 @@
-use std::{collections::HashSet, io::empty};
+use std::collections::HashSet;
 
-use anyhow::Context;
 use itertools::Itertools;
-
-fn d1d(x1: usize, x2: usize, expands: &HashSet<usize>, factor: usize) -> usize {
-    if x1 > x2 {
-        return d1d(x2, x1, expands, factor);
-    }
-    expands.iter().filter(|&x| x1 < *x && *x < x2).count() * (factor - 1) + x2 - x1
-}
-fn d(
-    (x1, y1): (usize, usize),
-    (x2, y2): (usize, usize),
-    expanding_rows: &HashSet<usize>,
-    expanding_columns: &HashSet<usize>,
-    factor: usize,
-) -> usize {
-    d1d(x1, x2, expanding_columns, factor) + d1d(y1, y2, expanding_rows, factor)
-}
 fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("inputs/day11.txt")?;
     let width = input.lines().next().unwrap().len();
@@ -30,27 +13,38 @@ fn main() -> anyhow::Result<()> {
             }
         }
     }
-    let empty_columns: HashSet<_> = (0..width)
+    let empty_column_contributions: usize = (0..width)
         .filter(|x| !galaxies.iter().any(|(gx, _)| gx == x))
-        .collect();
-    let empty_rows: HashSet<_> = (0..height)
-        .filter(|y| !galaxies.iter().any(|(_, gy)| gy == y))
-        .collect();
+        .map(|x| {
+            let left = galaxies.iter().filter(|(gx, _)| *gx < x).count();
+            let right = galaxies.iter().filter(|(gx, _)| *gx > x).count();
+            left * right
+        })
+        .sum();
 
-    let (part1, part2) = galaxies
+    let empty_row_contributions: usize = (0..height)
+        .filter(|y| !galaxies.iter().any(|(_, gy)| gy == y))
+        .map(|y| {
+            let above = galaxies.iter().filter(|(_, gy)| *gy < y).count();
+            let below = galaxies.iter().filter(|(_, gy)| *gy > y).count();
+            above * below
+        })
+        .sum();
+
+    let normal_distance: usize = galaxies
         .iter()
         .combinations(2)
-        .map(|v| {
-            (
-                d(*v[0], *v[1], &empty_rows, &empty_columns, 2),
-                d(*v[0], *v[1], &empty_rows, &empty_columns, 1_000_000),
-            )
-        })
-        .reduce(|(a, b), (x, y)| (a + x, b + y))
-        .context("No galaxies")?;
+        .map(|v| v[1].0.abs_diff(v[0].0) + v[1].1.abs_diff(v[0].1))
+        .sum();
     // println!("{}", d((1, 5), (4, 9), &empty_rows, &empty_columns));
-    println!("11.1: {part1}");
-    println!("11.2: {part2}");
+    println!(
+        "11.1: {}",
+        normal_distance + empty_column_contributions + empty_row_contributions
+    );
+    println!(
+        "11.2: {}",
+        normal_distance + (empty_column_contributions + empty_row_contributions) * (1_000_000 - 1)
+    );
 
     Ok(())
 }
