@@ -28,21 +28,14 @@ impl<'a> State<'a> {
 
 fn n_matches(pattern: &str, description: &[usize]) -> u64 {
     fn n_matches_from_index(state: &mut State<'_>, pi: usize, di: usize) -> u64 {
-        //cache hit
-        if let Some(result) = state.get_cache((pi, di)) {
-            return result;
-        }
-
         //an empty description matches anything without any '#'s
         if state.description.len() <= di {
             let result = !state.pattern[pi..].contains('#') as u64;
-            state.set_cache((pi, di), result);
             return result;
         }
 
         let description = &state.description[di..];
         if state.pattern.len() <= pi {
-            state.set_cache((pi, di), 0);
             return 0;
         }
         let pattern = &state.pattern[pi..];
@@ -50,7 +43,6 @@ fn n_matches(pattern: &str, description: &[usize]) -> u64 {
 
         //early return if remaining pattern isn't long enough
         if pattern.len() + 1 < description.iter().map(|x| x + 1).sum::<usize>() {
-            state.set_cache((pi, di), 0);
             return 0;
         }
 
@@ -62,14 +54,12 @@ fn n_matches(pattern: &str, description: &[usize]) -> u64 {
 
         //early return if no matches
         if index.is_none() {
-            state.set_cache((pi, di), 0);
             return 0;
         }
         let index = index.unwrap();
 
         //early return with too short a pattern
         if pattern.len() < *first + index {
-            state.set_cache((pi, di), 0);
             return 0;
         }
 
@@ -77,7 +67,7 @@ fn n_matches(pattern: &str, description: &[usize]) -> u64 {
 
         // principal branch: recurse with '?' is '.'
         if &pattern[index..=index] == "?" {
-            result += n_matches_from_index(state, pi + index + 1, di);
+            result += cached(state, pi + index + 1, di);
         }
 
         //try taking the next "first" characters, they should all be '#' or '?'
@@ -85,7 +75,6 @@ fn n_matches(pattern: &str, description: &[usize]) -> u64 {
             .chars()
             .all(|c| ['?', '#'].contains(&c)))
         {
-            state.set_cache((pi, di), result);
             return result;
         };
 
@@ -94,21 +83,26 @@ fn n_matches(pattern: &str, description: &[usize]) -> u64 {
 
         //if we're at the end of the string, we can return
         if next.is_none() {
-            result += n_matches_from_index(state, pi + index + first, di + 1);
-            state.set_cache((pi, di), result);
+            result += cached(state, pi + index + first, di + 1);
             return result;
         }
 
         let next = next.unwrap();
         //if the sequence of '#'s is longer than we expected, we're done
         if next == "#" {
-            state.set_cache((pi, di), result);
             return result;
         }
 
         //otherwise, we've found first '#' or '?'s, terminated by a '.' or '?', so we recurse
-        result += n_matches_from_index(state, pi + index + first + 1, di + 1);
-        state.set_cache((pi, di), result);
+        result + cached(state, pi + index + first + 1, di + 1)
+    }
+
+    fn cached(state: &mut State, x: usize, y: usize) -> u64 {
+        if let Some(result) = state.get_cache((x, y)) {
+            return result;
+        }
+        let result: u64 = n_matches_from_index(state, x, y);
+        state.set_cache((x, y), result);
         result
     }
 
