@@ -4,10 +4,11 @@ use anyhow::Context;
 use cached::proc_macro::cached;
 use itertools::Itertools;
 
-fn n_matches(pattern: &str, description: &[usize]) -> u32 {
+#[cached]
+fn n_matches(pattern: String, description: Vec<usize>) -> u64 {
     // println!("n_matches {pattern} {description:?}");
     if description.is_empty() {
-        return !pattern.contains('#') as u32;
+        return !pattern.contains('#') as u64;
     }
     if pattern.len() + 1 < description.iter().map(|x| x + 1).sum::<usize>() {
         return 0;
@@ -32,7 +33,7 @@ fn n_matches(pattern: &str, description: &[usize]) -> u32 {
     if &pattern[index..=index] == "?" {
         // let the ? be .
         // println!("Let ? be . ({pattern})");
-        result += n_matches(&pattern[index + 1..], description);
+        result += n_matches(pattern[index + 1..].to_owned(), description.clone());
         // println!("returned to {pattern}");
     }
 
@@ -48,7 +49,10 @@ fn n_matches(pattern: &str, description: &[usize]) -> u32 {
     let next = pattern.get((index + first)..=(index + first));
     if next.is_none() {
         // println!("End of string");
-        result += n_matches(&pattern[index + first..], &description[1..]);
+        result += n_matches(
+            pattern[index + first..].to_owned(),
+            description[1..].to_owned(),
+        );
         return result;
     }
     let next = next.unwrap();
@@ -59,7 +63,10 @@ fn n_matches(pattern: &str, description: &[usize]) -> u32 {
         return result;
     }
 
-    result += n_matches(&pattern[index + first + 1..], &description[1..]);
+    result += n_matches(
+        pattern[index + first + 1..].to_owned(),
+        description[1..].to_owned(),
+    );
     // println!("returning {result} from {pattern} {description:?}");
     result
 }
@@ -84,11 +91,12 @@ fn main() -> anyhow::Result<()> {
 
         let unfolded = std::iter::repeat(pattern).take(5).collect_vec().join("?");
         let repeated = description.repeat(5);
-        part1 += n_matches(pattern, &description);
-        part2 += n_matches(&unfolded, &repeated);
+
+        part1 += n_matches(pattern.to_owned(), description);
+        part2 += n_matches(unfolded, repeated);
     }
-    println!("{}", part2);
     println!("{}", part1);
+    println!("{}", part2);
 
     Ok(())
 }
@@ -99,7 +107,7 @@ mod test {
 
     #[test]
     fn test_matches() {
-        assert_eq!(n_matches("???.###", &[1, 1, 3]), 1);
-        assert_eq!(n_matches(".??..??...?##.", &[1, 1, 3]), 4);
+        assert_eq!(n_matches("???.###".to_owned(), vec![1, 1, 3]), 1);
+        assert_eq!(n_matches(".??..??...?##.".to_owned(), vec![1, 1, 3]), 4);
     }
 }
