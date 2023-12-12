@@ -1,5 +1,5 @@
-use anyhow::Context;
 use itertools::Itertools;
+use rayon::prelude::*;
 
 struct State<'a> {
     pattern: &'a str,
@@ -111,21 +111,25 @@ fn n_matches(pattern: &str, description: &[usize]) -> u64 {
 
 fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("inputs/day12.txt")?;
-    let mut part1 = 0;
-    let mut part2 = 0;
-    for line in input.lines() {
-        let (pattern, description) = line.split_once(' ').context("Invalid line")?;
-        let description = description
-            .split(',')
-            .map(str::parse)
-            .collect::<Result<Vec<usize>, _>>()?;
+    let [part1, part2] = input
+        .par_lines()
+        .map(|line| {
+            let (pattern, description) = line.split_once(' ').unwrap();
+            let description = description
+                .split(',')
+                .map(str::parse)
+                .collect::<Result<Vec<usize>, _>>()
+                .unwrap();
 
-        let unfolded = std::iter::repeat(pattern).take(5).collect_vec().join("?");
-        let repeated = description.repeat(5);
+            let unfolded = std::iter::repeat(pattern).take(5).collect_vec().join("?");
+            let repeated = description.repeat(5);
+            [
+                n_matches(pattern, &description),
+                n_matches(&unfolded, &repeated),
+            ]
+        })
+        .reduce(|| [0, 0], |a, b| [a[0] + b[0], a[1] + b[1]]);
 
-        part1 += n_matches(pattern, &description);
-        part2 += n_matches(&unfolded, &repeated);
-    }
     println!("{}", part1);
     println!("{}", part2);
 
