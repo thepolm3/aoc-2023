@@ -35,42 +35,38 @@ impl Grid {
         &self.cells[self.width * i..(self.width * (i + 1))]
     }
 
-    fn rows_eq(&self, r1: usize, r2: usize) -> bool {
-        let row1 = &self.cells[self.width * r1..(self.width * (r1 + 1))];
-        let row2 = &self.cells[self.width * r2..(self.width * (r2 + 1))];
-        // println!("{r1}: {row1:?}");
-        // println!("{r2}: {row2:?}");
-        self.cells[self.width * r1..(self.width * (r1 + 1))]
-            == self.cells[self.width * r2..(self.width * (r2 + 1))]
+    fn row_diff(&self, r1: usize, r2: usize) -> usize {
+        self.row(r1)
+            .iter()
+            .zip(self.row(r2))
+            .filter(|(a, b)| a != b)
+            .count()
     }
-
-    // fn row_diff(&self, r1: usize, r2: usize) -> usize {}
 
     fn row_mirror_line(&self) -> Option<usize> {
         let candidates: Vec<usize> = (0..(self.height - 1))
-            .filter(|&i| (0..=i.min(self.height - i - 2)).all(|j| self.rows_eq(i - j, i + 1 + j)))
+            .filter(|&i| {
+                (0..=i.min(self.height - i - 2)).all(|j| self.row(i - j) == self.row(i + 1 + j))
+            })
+            .collect();
+        candidates.first().copied()
+    }
+
+    fn row_mirror_line_with_smudge(&self) -> Option<usize> {
+        let candidates: Vec<usize> = (0..(self.height - 1))
+            .filter(|&i| {
+                (0..=i.min(self.height - i - 2))
+                    .map(|j| self.row_diff(i - j, i + 1 + j))
+                    .sum::<usize>()
+                    == 1
+            })
             .collect();
         candidates.first().copied()
     }
 }
 
-fn main() {
-    let input = "#.##..##.
-..#.##.#.
-##......#
-##......#
-..#.##.#.
-..##..##.
-#.#.##.#.
-
-#...##..#
-#....#..#
-..##..###
-#####.##.
-#####.##.
-..##..###
-#....#..#";
-    let input = std::fs::read_to_string("inputs/day13.txt").unwrap();
+fn main() -> anyhow::Result<()> {
+    let input = std::fs::read_to_string("inputs/day13.txt")?;
     let mut grids: Vec<Grid> = Vec::new();
     let mut current = Vec::new();
     let mut width = 0;
@@ -94,13 +90,23 @@ fn main() {
     }
 
     let mut part1 = 0;
+    let mut part2 = 0;
     for grid in grids {
-        part1 += grid
-            .transpose()
-            .row_mirror_line()
+        let tgrid = grid.transpose();
+        part1 += tgrid.row_mirror_line().map(|x| x + 1).unwrap_or(0);
+        part1 += grid.row_mirror_line().map(|x| x + 1).unwrap_or(0) * 100;
+        part2 += tgrid
+            .row_mirror_line_with_smudge()
             .map(|x| x + 1)
             .unwrap_or(0);
-        part1 += grid.row_mirror_line().map(|x| x + 1).unwrap_or(0) * 100;
+        part2 += grid
+            .row_mirror_line_with_smudge()
+            .map(|x| x + 1)
+            .unwrap_or(0)
+            * 100;
     }
     println!("{}", part1);
+    println!("{}", part2);
+
+    Ok(())
 }
