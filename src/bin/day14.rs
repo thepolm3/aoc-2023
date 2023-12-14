@@ -61,6 +61,7 @@ impl Grid {
         assert!(y < self.height);
         self.cells[self.width * y..(self.width * (y + 1))].iter()
     }
+
     fn row_mut(&mut self, y: usize) -> impl Iterator<Item = &mut Cell> {
         assert!(y < self.height);
         self.cells[self.width * y..(self.width * (y + 1))].iter_mut()
@@ -74,9 +75,10 @@ impl Grid {
     fn column_mut(&mut self, x: usize) -> impl Iterator<Item = &mut Cell> {
         assert!(x < self.width);
         assert!(self.width * (self.height - 1) + x < self.cells.len());
+
         //SAFETY: x and y are both within bounds, so .add() should also always be in bounds
         //we know that self lives for 'a, and therefore so does the reference to Cell.
-        //if self.height is 0 then this will not yield any pointers, and if self.height is nonzero
+        //if self.height is 0 then this will not yield any references, and if self.height is nonzero
         //then all of our indexes are disjoint, provided x < self.width, which is asserted.
         //we do an additonal assert to ensure that the internal cells buffer is of the correct length
         (0..self.height)
