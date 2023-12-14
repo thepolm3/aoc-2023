@@ -93,6 +93,7 @@ impl Grid {
             Cell::Boulder => Cell::Ground,
             Cell::Ground => Cell::Boulder,
         };
+
         let mut column = axis.collect_vec();
         let sections = column.split_mut(|x| **x == Cell::Rock).collect_vec();
         for section in sections {
@@ -176,16 +177,6 @@ fn cycle_n(mut grid: Grid, n: usize) -> Grid {
 
 fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("inputs/day14.txt")?;
-    //     let input = "O....#....
-    // O.OO#....#
-    // .....##...
-    // OO.#O....O
-    // .O.....O#.
-    // O.#..O.#.#
-    // ..O..#O..O
-    // .......O..
-    // #....###..
-    // #OO..#....";
     let width = input.lines().next().unwrap().len();
     let cells = input
         .lines()
