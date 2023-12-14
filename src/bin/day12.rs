@@ -130,8 +130,8 @@ fn main() -> anyhow::Result<()> {
         })
         .reduce(|| [0, 0], |a, b| [a[0] + b[0], a[1] + b[1]]);
 
-    println!("{}", part1);
-    println!("{}", part2);
+    println!("12.1: {}", part1);
+    println!("12.2: {}", part2);
 
     Ok(())
 }

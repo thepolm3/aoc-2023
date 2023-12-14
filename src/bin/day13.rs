@@ -105,8 +105,8 @@ fn main() -> anyhow::Result<()> {
             .unwrap_or(0)
             * 100;
     }
-    println!("{}", part1);
-    println!("{}", part2);
+    println!("13.1: {}", part1);
+    println!("13.2: {}", part2);
 
     Ok(())
 }
