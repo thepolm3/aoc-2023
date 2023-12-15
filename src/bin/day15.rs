@@ -6,7 +6,7 @@ enum Op {
 fn hash(s: &str) -> usize {
     s.as_bytes()
         .iter()
-        .fold(0, |acc, c| (17 * (acc + *c as usize)) % 256)
+        .fold(0, |acc, c| c.wrapping_add(acc).wrapping_mul(17)) as usize
 }
 fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("inputs/day15.txt")?;
