@@ -1,7 +1,6 @@
-use core::panic;
 use itertools::Itertools;
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{HashSet, VecDeque},
     fmt::Debug,
 };
 
@@ -77,12 +76,6 @@ impl Grid {
         }
         self.cells.get(y * self.width + x).copied()
     }
-    fn get_mut(&mut self, x: usize, y: usize) -> Option<&mut Cell> {
-        if x >= self.width || y >= self.height {
-            return None;
-        }
-        self.cells.get_mut(y * self.width + x)
-    }
 }
 
 fn energised_tiles(grid: &Grid, start: (usize, usize, Direction)) -> usize {
@@ -142,16 +135,6 @@ fn energised_tiles(grid: &Grid, start: (usize, usize, Direction)) -> usize {
 }
 
 fn main() -> anyhow::Result<()> {
-    let input = r".|...\....
-|.-.\.....
-.....|-...
-........|.
-..........
-.........\
-..../.\\..
-.-.-/..|..
-.|....-|.\
-..//.|....";
     let input = std::fs::read_to_string("inputs/day16.txt")?;
     let width = input.lines().next().unwrap().len();
     let grid = input
