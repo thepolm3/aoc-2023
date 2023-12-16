@@ -20,7 +20,6 @@ enum Cell {
     SouthEastMirror,
     VerticalSplitter,
     HorizontalSplitter,
-    Light,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -49,7 +48,6 @@ impl Debug for Grid {
                         Cell::SouthEastMirror => '\\',
                         Cell::VerticalSplitter => '|',
                         Cell::HorizontalSplitter => '-',
-                        Cell::Light => '#',
                     }
                 )?
             }
@@ -87,39 +85,11 @@ impl Grid {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+fn energised_tiles(grid: &Grid, start: (usize, usize, Direction)) -> usize {
     use Cell::*;
     use Direction::*;
-    let input = r".|...\....
-|.-.\.....
-.....|-...
-........|.
-..........
-.........\
-..../.\\..
-.-.-/..|..
-.|....-|.\
-..//.|....";
-    let input = std::fs::read_to_string("inputs/day16.txt")?;
-    let width = input.lines().next().unwrap().len();
-    let grid = input
-        .lines()
-        .flat_map(|line| {
-            line.as_bytes().iter().map(|x| match x {
-                b'|' => VerticalSplitter,
-                b'-' => HorizontalSplitter,
-                b'/' => NorthEastMirror,
-                b'\\' => SouthEastMirror,
-                _ => Empty,
-            })
-        })
-        .collect();
-    let grid = Grid::new(grid, width);
-    let mut visualisation = grid.clone();
-    // println!("{:?}", grid);
-
     let mut visited = HashSet::new();
-    let mut beam_positions = VecDeque::from(vec![(0, 0, East)]);
+    let mut beam_positions = VecDeque::from(vec![start]);
     while let Some((x, y, d)) = beam_positions.pop_front() {
         let cell = grid.get(x, y);
         if cell.is_none() {
@@ -129,10 +99,6 @@ fn main() -> anyhow::Result<()> {
         if !visited.insert((x, y, d)) {
             continue;
         };
-        let v = visualisation.get_mut(x, y).unwrap();
-        if *v == Empty {
-            *v = Light;
-        }
         let cell = cell.unwrap();
         match (d, cell) {
             (North, Empty)
@@ -165,17 +131,56 @@ fn main() -> anyhow::Result<()> {
             (East, VerticalSplitter) | (West, VerticalSplitter) => {
                 beam_positions.extend([(x, y, North), (x, y, South)])
             }
-            _ => panic!(),
         }
     }
-    println!("{:?}", visualisation);
-    let part1 = visited
+    visited
         .into_iter()
         .map(|(a, b, _)| (a, b))
         .inspect(|&(x, y)| assert!(x < grid.width && y < grid.height))
         .unique()
-        .count();
-    println!("16.1: {part1}");
+        .count()
+}
+
+fn main() -> anyhow::Result<()> {
+    let input = r".|...\....
+|.-.\.....
+.....|-...
+........|.
+..........
+.........\
+..../.\\..
+.-.-/..|..
+.|....-|.\
+..//.|....";
+    let input = std::fs::read_to_string("inputs/day16.txt")?;
+    let width = input.lines().next().unwrap().len();
+    let grid = input
+        .lines()
+        .flat_map(|line| {
+            line.as_bytes().iter().map(|x| match x {
+                b'|' => Cell::VerticalSplitter,
+                b'-' => Cell::HorizontalSplitter,
+                b'/' => Cell::NorthEastMirror,
+                b'\\' => Cell::SouthEastMirror,
+                _ => Cell::Empty,
+            })
+        })
+        .collect();
+    let grid = Grid::new(grid, width);
+    // println!("{:?}", grid);
+
+    println!("16.1: {}", energised_tiles(&grid, (0, 0, Direction::East)));
+    let mut start_positions = Vec::new();
+    start_positions.extend((0..grid.width).map(|x| (x, grid.height - 1, Direction::North)));
+    start_positions.extend((0..grid.height).map(|y| (0, y, Direction::East)));
+    start_positions.extend((0..grid.width).map(|x| (x, 0, Direction::South)));
+    start_positions.extend((0..grid.height).map(|y| (grid.width - 1, y, Direction::West)));
+
+    let part2 = start_positions
+        .into_iter()
+        .map(|start| energised_tiles(&grid, start))
+        .max();
+    println!("16.2: {:?}", part2);
 
     Ok(())
 }
