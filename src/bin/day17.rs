@@ -34,7 +34,7 @@ impl Direction {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, PartialOrd, Ord)]
 struct ExplorePosition {
     cost: u32,
     moved: usize,
@@ -108,8 +108,6 @@ fn part1(grid: &Grid) -> Option<u32> {
         moved: 0,
         cost: 0,
     });
-    let mut i = 0u64;
-    let mut cache_hits = 0u64;
     while let Some(ExplorePosition {
         x,
         y,
@@ -118,20 +116,14 @@ fn part1(grid: &Grid) -> Option<u32> {
         cost,
     }) = to_explore.pop_first()
     {
-        // println!("{cost} {e:?}");
         if let Some(m) = visited.get_mut(&(x, y, d)) {
             if *m <= moved {
                 //we've been here before with more moves available
-                cache_hits += 1;
                 continue;
             }
             *m = moved;
         } else {
             visited.insert((x, y, d), moved);
-        }
-        i += 1;
-        if i % 10_000 == 0 {
-            println!("{i}: {cache_hits}");
         }
         if (x, y) == (grid.width - 1, grid.height - 1) {
             return Some(cost);
@@ -160,7 +152,7 @@ fn part1(grid: &Grid) -> Option<u32> {
 fn part2(grid: &Grid) -> Option<u32> {
     use Direction::*;
     let mut to_explore = BTreeSet::new();
-    let mut visited = HashSet::new();
+    let mut visited = HashMap::new();
     to_explore.insert(ExplorePosition {
         x: 0,
         y: 0,
@@ -175,8 +167,6 @@ fn part2(grid: &Grid) -> Option<u32> {
         moved: 0,
         cost: 0,
     });
-    let mut i = 0u64;
-    let mut cache_hits = 0u64;
     while let Some(ExplorePosition {
         x,
         y,
@@ -185,16 +175,18 @@ fn part2(grid: &Grid) -> Option<u32> {
         cost,
     }) = to_explore.pop_first()
     {
-        // println!("{cost} {e:?}");
-        if !visited.insert((x, y, d, moved)) {
-            cache_hits += 1;
-            continue;
+        if moved >= 4 {
+            if let Some(m) = visited.get_mut(&(x, y, d)) {
+                if *m <= moved {
+                    //we've been here before with more moves available
+                    continue;
+                }
+                *m = moved;
+            } else {
+                visited.insert((x, y, d), moved);
+            }
         }
-        i += 1;
-        if i % 10_000 == 0 {
-            println!("{i}: {cache_hits}");
-        }
-        if (x, y) == (grid.width - 1, grid.height - 1) {
+        if (x, y) == (grid.width - 1, grid.height - 1) && moved >= 4 {
             return Some(cost);
         }
         for explore_d in [North, East, South, West] {
@@ -206,14 +198,13 @@ fn part2(grid: &Grid) -> Option<u32> {
             }
             if let Some((x2, y2)) = explore_d.move_from(x, y) {
                 if let Some(position_cost) = grid.get(x2, y2) {
-                    let e2 = ExplorePosition {
+                    to_explore.insert(ExplorePosition {
                         x: x2,
                         y: y2,
                         d: explore_d,
                         moved: if d == explore_d { moved + 1 } else { 1 },
                         cost: position_cost + cost,
-                    };
-                    to_explore.insert(e2);
+                    });
                 }
             }
         }
