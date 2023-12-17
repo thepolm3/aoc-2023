@@ -97,7 +97,14 @@ fn part1(grid: &Grid) -> Option<u32> {
     to_explore.insert(ExplorePosition {
         x: 0,
         y: 0,
-        d: Direction::North,
+        d: East,
+        moved: 0,
+        cost: 0,
+    });
+    to_explore.insert(ExplorePosition {
+        x: 0,
+        y: 0,
+        d: South,
         moved: 0,
         cost: 0,
     });
@@ -153,11 +160,18 @@ fn part1(grid: &Grid) -> Option<u32> {
 fn part2(grid: &Grid) -> Option<u32> {
     use Direction::*;
     let mut to_explore = BTreeSet::new();
-    let mut visited = HashMap::new();
+    let mut visited = HashSet::new();
     to_explore.insert(ExplorePosition {
         x: 0,
         y: 0,
-        d: Direction::North,
+        d: East,
+        moved: 0,
+        cost: 0,
+    });
+    to_explore.insert(ExplorePosition {
+        x: 0,
+        y: 0,
+        d: South,
         moved: 0,
         cost: 0,
     });
@@ -172,15 +186,9 @@ fn part2(grid: &Grid) -> Option<u32> {
     }) = to_explore.pop_first()
     {
         // println!("{cost} {e:?}");
-        if let Some(m) = visited.get_mut(&(x, y, d)) {
-            if *m <= moved {
-                //we've been here before with more moves available
-                cache_hits += 1;
-                continue;
-            }
-            *m = moved;
-        } else {
-            visited.insert((x, y, d), moved);
+        if !visited.insert((x, y, d, moved)) {
+            cache_hits += 1;
+            continue;
         }
         i += 1;
         if i % 10_000 == 0 {
@@ -190,10 +198,10 @@ fn part2(grid: &Grid) -> Option<u32> {
             return Some(cost);
         }
         for explore_d in [North, East, South, West] {
-            if moved <= 4 && d != explore_d {
-                continue;
-            }
-            if moved == 10 && d == explore_d || explore_d == d.opposite() {
+            if moved < 4 && d != explore_d
+                || moved == 10 && d == explore_d
+                || explore_d == d.opposite()
+            {
                 continue;
             }
             if let Some((x2, y2)) = explore_d.move_from(x, y) {
@@ -214,20 +222,7 @@ fn part2(grid: &Grid) -> Option<u32> {
 }
 
 fn main() -> anyhow::Result<()> {
-    let input = "2413432311323
-3215453535623
-3255245654254
-3446585845452
-4546657867536
-1438598798454
-4457876987766
-3637877979653
-4654967986887
-4564679986453
-1224686865563
-2546548887735
-4322674655533";
-    // let input = std::fs::read_to_string("inputs/day17.txt")?;
+    let input = std::fs::read_to_string("inputs/day17.txt")?;
     let width = input.lines().next().unwrap().len();
     let grid = input
         .lines()
