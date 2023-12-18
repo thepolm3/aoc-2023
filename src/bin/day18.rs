@@ -54,10 +54,6 @@ fn metres_dug(v: &[(Direction, i64)]) -> i64 {
 }
 fn main() -> anyhow::Result<()> {
     let input = std::fs::read_to_string("inputs/day18.txt")?;
-    //
-    //###
-    //# #
-    //###
     let part1 = metres_dug(
         &input
             .lines()
