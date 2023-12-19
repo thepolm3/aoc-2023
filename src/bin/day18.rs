@@ -50,6 +50,7 @@ fn metres_dug(v: &[(Direction, i64)]) -> i64 {
         .sum::<i64>()
         / 2;
 
+    //picks theorem
     area + (boundary_points / 2) + 1
 }
 fn main() -> anyhow::Result<()> {
