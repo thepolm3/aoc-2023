@@ -1,4 +1,3 @@
-use anyhow::Context;
 use num::{BigInt, Integer};
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 
@@ -23,171 +22,170 @@ impl Pulse {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum Gate {
-    FlipFlop(Pulse),
-    Conjunction(BTreeMap<usize, Pulse>),
-    Label,
+fn broadcast_pulses<'a>(
+    gates: &'_ HashMap<&'_ str, (Gate, Vec<&'a str>)>,
+) -> VecDeque<(&'a str, &'a str, Pulse)> {
+    gates["broadcaster"]
+        .1
+        .iter()
+        .map(|i| ("broadcast", *i, Pulse::Low))
+        .collect()
 }
-fn main() -> anyhow::Result<()> {
-    let input = "broadcaster -> a, b, c
-%a -> b
-%b -> c
-%c -> inv
-&inv -> a";
-    let input = std::fs::read_to_string("inputs/day20.txt")?;
-    let mut labels: Vec<_> = input
-        .lines()
-        .filter_map(|line| {
-            let (label, _) = line.split_once(" -> ")?;
 
-            Some(label.strip_prefix(['%', '&']).unwrap_or(label))
-        })
-        .collect();
-    labels.push("dummy");
-    let labels = labels;
-
-    let label_idx = |s| {
-        labels
-            .iter()
-            .position(|&x| x == s)
-            .unwrap_or(labels.len() - 1)
-    };
-
-    let outputs: Vec<Vec<_>> = input
-        .lines()
-        .filter_map(|line| {
-            let (_, outputs) = line.split_once(" -> ")?;
-            Some(outputs.split(", ").map(label_idx).collect())
-        })
-        .collect();
-
-    let mut gates: Vec<_> = input
-        .lines()
-        .enumerate()
-        .filter_map(|(gate_idx, line)| {
-            let (label, _) = line.split_once(" -> ")?;
-            Some(match label.chars().next() {
-                Some('%') => Gate::FlipFlop(Pulse::Low),
-                Some('&') => Gate::Conjunction(
-                    outputs
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, o)| o.contains(&gate_idx).then_some((i, Pulse::Low)))
-                        .collect(),
-                ),
-                _ => Gate::Label,
-            })
-        })
-        .collect();
-    gates.push(Gate::Label);
-
-    let broadcast = label_idx("broadcaster");
-
-    let mut low = 0;
+//gets number of low and high signals sent
+fn buttonpress_low_hi(gates: &mut HashMap<&str, (Gate, Vec<&str>)>) -> (usize, usize) {
+    let mut low = 1; //button pulse
     let mut high = 0;
-    for _ in 0..1000 {
-        low += 1; //button pulse
 
-        //push button
-        let mut pulses = VecDeque::from_iter(
-            outputs[broadcast]
-                .iter()
-                .map(|i| (broadcast, *i, Pulse::Low)),
-        );
-        while let Some((from, to, pulse)) = pulses.pop_front() {
-            if pulse == Pulse::High {
-                high += 1;
-            } else {
-                low += 1
-            }
-            let gate = &mut gates[to];
-            match gate {
-                Gate::FlipFlop(x) => {
-                    if pulse == Pulse::Low {
-                        *x = x.invert();
-                        pulses.extend(outputs[to].iter().map(|&o| (to, o, *x)));
-                    }
-                }
-                Gate::Conjunction(inputs) => {
-                    inputs.insert(from, pulse);
-                    let send_pulse =
-                        Pulse::from_bool(inputs.iter().all(|(_, &x)| x == Pulse::High)).invert();
-                    pulses.extend(outputs[to].iter().map(|&o| (to, o, send_pulse)));
-                }
-                Gate::Label => {}
-            }
+    //push button
+    let mut pulses = broadcast_pulses(gates);
+    while let Some((from, to, pulse)) = pulses.pop_front() {
+        if pulse == Pulse::High {
+            high += 1;
+        } else {
+            low += 1
+        }
+        if let Some(gate) = gates.get_mut(to) {
+            pulses.extend(send_pulse(gate, pulse, from, to))
         }
     }
 
+    (low, high)
+}
+
+//gets number of low and high signals sent
+fn buttonpress_pulls_high(gates: &mut HashMap<&str, (Gate, Vec<&str>)>, target: &str) -> bool {
+    //push button
+    let mut pulses = broadcast_pulses(gates);
+
+    let mut hi_target = false;
+    while let Some((from, to, pulse)) = pulses.pop_front() {
+        if to == target && pulse == Pulse::High {
+            hi_target = true;
+        }
+        if let Some(gate) = gates.get_mut(to) {
+            pulses.extend(send_pulse(gate, pulse, from, to))
+        }
+    }
+
+    hi_target
+}
+
+fn send_pulse<'a>(
+    gate: &mut (Gate, Vec<&'a str>),
+    pulse: Pulse,
+    from: &'a str,
+    to: &'a str,
+) -> Vec<(&'a str, &'a str, Pulse)> {
+    let (gate, outputs) = gate;
+    match gate {
+        Gate::FlipFlop(x) => {
+            if pulse == Pulse::Low {
+                *x = x.invert();
+                return outputs.iter().map(|&o| (to, o, *x)).collect();
+            }
+        }
+        Gate::Conjunction(inputs) => {
+            inputs.insert(from.into(), pulse);
+            let send_pulse =
+                Pulse::from_bool(inputs.iter().all(|(_, &x)| x == Pulse::High)).invert();
+            return outputs.iter().map(|&o| (to, o, send_pulse)).collect();
+        }
+        Gate::Label => {}
+    }
+    Vec::new()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum Gate {
+    FlipFlop(Pulse),
+    Conjunction(BTreeMap<String, Pulse>),
+    Label,
+}
+fn main() -> anyhow::Result<()> {
+    let input = std::fs::read_to_string("inputs/day20.txt")?;
+    let mut gates: HashMap<_, _> = input
+        .lines()
+        .map(|line| {
+            let (label, outputs) = line.split_once(" -> ").expect("Invalid line");
+            (
+                label.strip_prefix(['%', '&']).unwrap_or(label),
+                (
+                    match label.chars().next() {
+                        Some('%') => Gate::FlipFlop(Pulse::Low),
+                        Some('&') => Gate::Conjunction(Default::default()),
+                        _ => Gate::Label,
+                    },
+                    outputs.split(", ").collect::<Vec<_>>(),
+                ),
+            )
+        })
+        .collect();
+
+    //seed conjunction initial state
+    let gates_copy = gates.clone();
+    for (label, (gate, _)) in &mut gates {
+        if let Gate::Conjunction(inputs) = gate {
+            inputs.extend(
+                gates_copy
+                    .iter()
+                    .filter_map(|(k, (_, o))| {
+                        o.contains(label).then_some((k.to_string(), Pulse::Low))
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        }
+    }
+    let gates2 = gates.clone();
+
+    let (low, high) = (0..1000)
+        .map(|_| buttonpress_low_hi(&mut gates))
+        .fold((0, 0), |(a, b), (x, y)| (a + x, b + y));
+
     println!("20.1: {}", low * high);
 
-    let goals: Vec<_> = match &gates[label_idx("zh")] {
+    let penultimate = gates2
+        .iter()
+        .find(|(_, (_, o))| o.contains(&"rx"))
+        .expect("no rx node")
+        .0;
+
+    let goals: Vec<_> = match &gates2[penultimate].0 {
         Gate::Conjunction(inputs) => inputs,
-        _ => panic!(),
+        _ => panic!("Penultimate node not a conjunction"),
     }
     .keys()
-    .copied()
+    .cloned()
     .collect();
+
     let mut part2 = BigInt::from(1);
     for goal in goals {
         let mut dependencies = HashSet::new();
         let mut new_dependencies = HashSet::new();
-        new_dependencies.insert(goal);
+        new_dependencies.insert(&goal[..]);
         while new_dependencies != dependencies {
             dependencies = new_dependencies.clone();
             for d in &dependencies {
                 new_dependencies.extend(
-                    outputs
+                    gates
                         .iter()
-                        .enumerate()
-                        .filter_map(|(i, o)| o.contains(d).then_some(i)),
+                        .filter_map(|(label, (_, o))| o.contains(&&d[..]).then_some(label)),
                 );
             }
         }
-        println!(
-            "{} {:?}",
-            labels[goal],
-            dependencies.iter().map(|x| labels[*x]).collect::<Vec<_>>()
-        );
+
         let mut cache: HashMap<Vec<_>, _> = HashMap::new();
+        let mut gates = gates2.clone();
+
         let mut presses = 0;
         let (prev, next) = loop {
             presses += 1;
-            let mut pulses = VecDeque::from_iter(
-                outputs[broadcast]
-                    .iter()
-                    .map(|i| (broadcast, *i, Pulse::Low)),
-            );
-            let mut hit_goal = false;
-            while let Some((from, to, pulse)) = pulses.pop_front() {
-                if to == goal && pulse == Pulse::High {
-                    hit_goal = true;
-                }
-                let gate = &mut gates[to];
-                match gate {
-                    Gate::FlipFlop(x) => {
-                        if pulse == Pulse::Low {
-                            *x = x.invert();
-                            pulses.extend(outputs[to].iter().map(|&o| (to, o, *x)));
-                        }
-                    }
-                    Gate::Conjunction(inputs) => {
-                        inputs.insert(from, pulse);
-                        let send_pulse =
-                            Pulse::from_bool(inputs.iter().all(|(_, &x)| x == Pulse::High))
-                                .invert();
-                        pulses.extend(outputs[to].iter().map(|&o| (to, o, send_pulse)));
-                    }
-                    Gate::Label => {}
-                }
-            }
-            if hit_goal {
+
+            if buttonpress_pulls_high(&mut gates, &goal) {
                 if let Some(prev) = cache.insert(
                     gates
                         .iter()
-                        .enumerate()
-                        .filter_map(|(i, x)| dependencies.contains(&i).then_some(x.clone()))
+                        .filter_map(|(i, x)| dependencies.contains(&i[..]).then_some(x.clone()))
                         .collect(),
                     presses,
                 ) {
