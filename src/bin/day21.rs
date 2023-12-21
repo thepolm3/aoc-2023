@@ -139,8 +139,18 @@ fn n_visited_looping_fast(steps: usize, start: (usize, usize), garden: &Garden) 
     assert!(start.0 * 2 + 1 == garden.width);
     assert!(start.1 * 2 + 1 == garden.height);
 
-    //due to the gutters at the edge, this means that every single grid position
-    //will enter from the corners, except the ones directly orthogonal to our start
+    //we also assume that the two corners can be reached in minimum distance,
+    //this is a stronger property (the gutters of the data) but it does hold for the input data
+    assert!((0..garden.height).all(|y| garden.get(0, y) == Some(Cell::Plot)));
+    assert!((0..garden.height).all(|x| garden.get(x, garden.height - 1) == Some(Cell::Plot)));
+    assert!((0..garden.height).all(|x| garden.get(x, 0) == Some(Cell::Plot)));
+    assert!((0..garden.height).all(|y| garden.get(garden.width - 1, y) == Some(Cell::Plot)));
+
+    //we also assume that the corners are the furthest two points can be from
+    //each other, but we could do the algorithm without it
+
+    //due to the gutters at the edge, this means every single garden will be entered
+    //from the corner closest to the center, except the ones directly orthogonal to our start
 
     // A map of our universe looks like this, with each symbol a garden
     //       ^
