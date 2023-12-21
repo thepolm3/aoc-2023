@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::BTreeSet;
 
 use itertools::Itertools;
 use num::Integer;
@@ -47,17 +47,12 @@ impl Garden {
         }
         self.cells.get(y * self.width + x).copied()
     }
-
-    fn wrap_coords(&self, (x, y): (usize, usize)) -> (usize, usize) {
-        (x % self.width, y % self.height)
-    }
 }
 
 fn parity((x, y): &(usize, usize)) -> bool {
     ((x + y) % 2) == 0
 }
 
-// N E S W
 fn n_visited_after(garden: &Garden, start: (usize, usize), steps: usize) -> usize {
     let mut visited = BTreeSet::new();
     let mut hull = BTreeSet::new();
@@ -69,6 +64,7 @@ fn n_visited_after(garden: &Garden, start: (usize, usize), steps: usize) -> usiz
             if !visited.insert(idx) {
                 continue;
             }
+            // N E S W
             for nbr in [
                 (x + 1 < garden.width).then_some((x + 1, y)),
                 x.checked_sub(1).map(|x| (x, y)),
@@ -93,7 +89,6 @@ fn n_visited_after(garden: &Garden, start: (usize, usize), steps: usize) -> usiz
     }
 }
 
-//correct on sample data
 fn n_visited_after_looping(garden: &Garden, (x, y): (usize, usize), steps: usize) -> usize {
     let start: (isize, isize) = (x as isize, y as isize);
     let mut visited = BTreeSet::new();
